@@ -1,0 +1,58 @@
+root@ubuntu-s-1vcpu-1gb-nyc3-01:~/asistente-ai# cat docker-compose.yml
+version: '3.8'
+
+services:
+  whatsapp_node:
+    build: ./whatsapp-service
+    container_name: whatsapp_node
+    restart: always
+    volumes:
+      - ./whatsapp-service/.wwebjs_auth:/usr/src/app/.wwebjs_auth
+    environment:
+      - NODE_ENV=production
+    networks:
+      - nexum_network
+
+  db:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=asistente_db
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - nexum_network
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n_app
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - N8N_SECURE_COOKIE=false
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_DATABASE=asistente_db
+      - DB_POSTGRESDB_HOST=${DB_USER}
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_USER=${DB_PASSWORD}
+      - DB_POSTGRESDB_PASSWORD=mania92_secure
+      - N8N_ENCRYPTION_KEY=${N8N_KEY}
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    depends_on:
+      - db
+    networks:
+      - nexum_network
+
+networks:
+  nexum_network:
+    driver: bridge
