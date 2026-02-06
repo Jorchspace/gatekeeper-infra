@@ -1,0 +1,183 @@
+{
+  "name": "Security Gatekeeper - Senior Version",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gatekeeper-scan",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -752,
+        -416
+      ],
+      "id": "5e0e8a84-79a4-4f78-a236-9677aea6546e",
+      "name": "Webhook",
+      "webhookId": "f02c31e5-663f-4d71-b6c4-d891eeb15ce4"
+    },
+    {
+      "parameters": {
+        "url": "=https://www.virustotal.com/api/v3/urls/{{ $node[\"Webhook\"].json.body.url.base64Encode().replace(/=/g, \"\").replace(/\\+/g, \"-\").replace(/\\//g, \"_\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "virusTotalApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -544,
+        -416
+      ],
+      "id": "7803b69c-9bef-4c22-b081-ab3d410e8aeb",
+      "name": "VirusTotal HTTP Request",
+      "credentials": {
+        "virusTotalApi": {
+          "id": "79PGSP8KugRISl0E",
+          "name": "VirusTotal account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $node[\"VirusTotal HTTP Request\"].json.data.attributes.last_analysis_stats.malicious }}",
+              "operation": "larger"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        -416
+      ],
+      "id": "83fb5039-1a13-443f-ab3f-c6d9146d3399",
+      "name": "If Malicious"
+    },
+    {
+      "parameters": {
+        "schema": "public",
+        "table": "security_logs",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $node[\"Webhook\"].json.body.url }}",
+            "status": "={{ $node[\"VirusTotal HTTP Request\"].json.data.attributes.last_analysis_stats.malicious > 0 ? 'malicious' : 'safe' }}",
+            "malicious_votes": "={{ $node[\"VirusTotal HTTP Request\"].json.data.attributes.last_analysis_stats.malicious }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "default": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -80,
+        -416
+      ],
+      "id": "b2a4871f-55ef-4daa-98a4-1d3d4fa6fe7b",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "Nz3SobuysoiyJYWs",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -416
+      ],
+      "id": "08fab415-6ccf-41ab-9d4a-e097d5a54064",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "VirusTotal HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VirusTotal HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If Malicious",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Malicious": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "28286dfa-8d7c-4869-b696-04c1509dacc6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19d6f1b963297510645e3d2d5014f57e3d015e247497f2a8265ac0106c4a1bcd"
+  },
+  "id": "rx5avn5C64SandzEUnr9z",
+  "tags": []
+}
